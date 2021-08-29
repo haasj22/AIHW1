@@ -29,7 +29,9 @@ class AIPlayer(Player):
     #   cpy           - whether the player is a copy (when playing itself)
     ##
     def __init__(self, inputPlayerId):
-        super(AIPlayer,self).__init__(inputPlayerId, "Random")
+        super(AIPlayer,self).__init__(inputPlayerId, "RogersIsRisen")
+        self.myFood = None
+        self.myTunnel = None
     
     ##
     #getPlacement
@@ -95,13 +97,66 @@ class AIPlayer(Player):
     #Return: The Move to be made
     ##
     def getMove(self, currentState):
+
+        """
+        Code below this copied from 82 - 98 of FoodGatherer.py
+        Credits give to Nuxoll and whoever made this code
+        Credited August 29, 2021 by John Haas
+        """
+        myInv = getCurrPlayerInventory(currentState)
+        me = currentState.whoseTurn
+
+        #the first time this method is called, the food and tunnel locations
+        #need to be recorded in their respective instance variables
+        if (self.myTunnel == None):
+            #ASK NUXOLL ABOUT THIS
+            self.myTunnel = getConstrList(currentState, me, (TUNNEL,))[0]
+        if (self.myFood == None):
+            foods = getConstrList(currentState, None, (FOOD,))
+            self.myFood = foods[0]
+            #find the food closest to the tunnel
+            bestDistSoFar = 1000 #i.e., infinity
+            for food in foods:
+                dist = stepsToReach(currentState, self.myTunnel.coords, food.coords)
+                if (dist < bestDistSoFar):
+                    self.myFood = food
+                    bestDistSoFar = dist
+        """
+        Code above is copied
+        """
+
+        """
+        Code below copied from 110-125 of FoodGatherer.py
+        Credits give to Nuxoll and whoever made this code
+        Credited August 29, 2021 by John Haas
+        """
+        #if the worker has already moved, we're done
+        myWorker = getAntList(currentState, me, (WORKER,))[0]
+        if (myWorker.hasMoved):
+            return Move(END, None, None)
+        
+        #if the worker has food, move toward tunnel
+        if (myWorker.carrying):
+            path = createPathToward(currentState, myWorker.coords,
+                                    self.myTunnel.coords, UNIT_STATS[WORKER][MOVEMENT])
+            return Move(MOVE_ANT, path, None)
+            
+        #if the worker has no food, move toward food
+        if(not myWorker.carrying):
+            path = createPathToward(currentState, myWorker.coords,
+                                    self.myFood.coords, UNIT_STATS[WORKER][MOVEMENT])
+            return Move(MOVE_ANT, path, None)
+        """
+        Code above is copied
+        """
+
         moves = listAllLegalMoves(currentState)
-        selectedMove = moves[random.randint(0,len(moves) - 1)];
+        selectedMove = moves[random.randint(0,len(moves) - 1)]
 
         #don't do a build move if there are already 3+ ants
         numAnts = len(currentState.inventories[currentState.whoseTurn].ants)
         while (selectedMove.moveType == BUILD and numAnts >= 3):
-            selectedMove = moves[random.randint(0,len(moves) - 1)];
+            selectedMove = moves[random.randint(0,len(moves) - 1)]
             
         return selectedMove
     
