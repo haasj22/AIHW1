@@ -126,6 +126,35 @@ class AIPlayer(Player):
         """
 
         """
+        Code below this partially copied from 101 - 103 of FoodGatherer.py
+        Credits give to Nuxoll and whoever made this code
+        Credited August 29, 2021 by John Haas
+        """
+        myQueen = myInv.getQueen()
+        if (not myQueen.hasMoved and getConstrAt(currentState, myQueen.coords).type != ANTHILL):
+            print(getConstrAt(currentState, myQueen.coords).type)
+            print("First")
+            return Move(MOVE_ANT, [myQueen.coords], None)
+        elif(not myQueen.hasMoved):
+            print("Second")
+            if(myQueen.coords[1] != 3):
+                return Move(MOVE_ANT, [myQueen.coords, (myQueen.coords[0], myQueen.coords[1] + 1)])
+            else:
+                return Move(MOVE_ANT, [myQueen.coords, (myQueen.coords[0], myQueen.coords[1] - 1)])
+        """
+        Code above is copied
+        """
+
+        #don't do a build move if there are already 3+ ants
+        numAnts = len(currentState.inventories[currentState.whoseTurn].ants)
+
+
+
+        if numAnts < 3:
+
+            pass
+
+        """
         Code below copied from 110-125 of FoodGatherer.py
         Credits give to Nuxoll and whoever made this code
         Credited August 29, 2021 by John Haas
@@ -153,8 +182,7 @@ class AIPlayer(Player):
         moves = listAllLegalMoves(currentState)
         selectedMove = moves[random.randint(0,len(moves) - 1)]
 
-        #don't do a build move if there are already 3+ ants
-        numAnts = len(currentState.inventories[currentState.whoseTurn].ants)
+        
         while (selectedMove.moveType == BUILD and numAnts >= 3):
             selectedMove = moves[random.randint(0,len(moves) - 1)]
             
