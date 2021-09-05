@@ -221,10 +221,9 @@ class AIPlayer(Player):
 
         #the first time this method is called, the food and tunnel locations
         #need to be recorded in their respective instance variables
-        if (self.myTunnel == None):
-            #ASK NUXOLL ABOUT THIS
+        if (self.myTunnel == None or True):
             self.myTunnel = getConstrList(currentState, me, (TUNNEL,))[0]
-        if (self.myFood == None):
+        if (self.myFood == None or True):
             foods = getConstrList(currentState, None, (FOOD,))
             self.myFood = foods[0]
             #find the food closest to the tunnel
@@ -244,16 +243,23 @@ class AIPlayer(Player):
         Credited August 29, 2021 by John Haas
         """
         myQueen = myInv.getQueen()
-        if (not myQueen.hasMoved and getConstrAt(currentState, myQueen.coords).type != ANTHILL):
-            print(getConstrAt(currentState, myQueen.coords).type)
-            print("First")
-            return Move(MOVE_ANT, [myQueen.coords], None)
-        elif(not myQueen.hasMoved):
-            print("Second")
-            if(myQueen.coords[1] != 3):
+        if(not myQueen.hasMoved and getConstrAt(currentState, myQueen.coords) != None and
+                (getConstrAt(currentState, myQueen.coords).type == ANTHILL or 
+                getConstrAt(currentState, myQueen.coords).type == FOOD or 
+                getConstrAt(currentState, myQueen.coords).type == TUNNEL)):
+            if(myQueen.coords[1] != 3 and 
+                    getAntAt(currentState, (myQueen.coords[0], myQueen.coords[1] + 1))) == None:
                 return Move(MOVE_ANT, [myQueen.coords, (myQueen.coords[0], myQueen.coords[1] + 1)])
-            else:
+            elif myQueen.coords[1] != 0 and (getAntAt(currentState, (myQueen.coords[0], myQueen.coords[1] - 1)) == None):
                 return Move(MOVE_ANT, [myQueen.coords, (myQueen.coords[0], myQueen.coords[1] - 1)])
+            elif myQueen.coords[0] != 0 and (getAntAt(currentState, (myQueen.coords[0] - 1, myQueen.coords[1])) == None):
+                return Move(MOVE_ANT, [myQueen.coords, (myQueen.coords[0] - 1, myQueen.coords[1])])
+            elif myQueen.coords[0] != 9 and (getAntAt(currentState, (myQueen.coords[0] + 1, myQueen.coords[1])) == None):
+                return Move(MOVE_ANT, [myQueen.coords, (myQueen.coords[0] + 1, myQueen.coords[1])])
+            else:
+                return Move(MOVE_ANT, [myQueen.coords], None)
+        elif (not myQueen.hasMoved):
+            return Move(MOVE_ANT, [myQueen.coords], None)
         """
         Code above is copied
         """
@@ -261,33 +267,60 @@ class AIPlayer(Player):
         #don't do a build move if there are already 3+ ants
         numAnts = len(currentState.inventories[currentState.whoseTurn].ants)
 
-
-
-        if numAnts < 3:
-
+        numWorkers = len(getAntList(currentState, me, (WORKER,)))
+        myAnthill = myInv.getAnthill()
+        if numWorkers < 3 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 0:
+            print(getAntAt(currentState, myAnthill))
+            return Move(BUILD, [myAnthill.coords], WORKER)
+        else:
+            #print("Number of Workers: " + str(numWorkers))
+            #print("ANt")
             pass
 
+       
         """
         Code below copied from 110-125 of FoodGatherer.py
         Credits give to Nuxoll and whoever made this code
         Credited August 29, 2021 by John Haas
         """
         #if the worker has already moved, we're done
-        myWorker = getAntList(currentState, me, (WORKER,))[0]
-        if (myWorker.hasMoved):
-            return Move(END, None, None)
-
-        #if the worker has food, move toward tunnel
-        if (myWorker.carrying):
-            path = createPathToward(currentState, myWorker.coords,
-                                    self.myTunnel.coords, UNIT_STATS[WORKER][MOVEMENT])
-            return Move(MOVE_ANT, path, None)
-
-        #if the worker has no food, move toward food
-        if(not myWorker.carrying):
-            path = createPathToward(currentState, myWorker.coords,
-                                    self.myFood.coords, UNIT_STATS[WORKER][MOVEMENT])
-            return Move(MOVE_ANT, path, None)
+        workers = getAntList(currentState, me, (WORKER,))
+        for worker in workers:
+            if worker.hasMoved:
+                continue
+            #if the worker has food, move toward tunnel
+            if (worker.carrying):
+                print(worker.UniqueID)
+                print("Toward Tunnel")
+                print("Tunnel Coords: " + str(self.myTunnel.coords))
+                path = createPathToward(currentState, worker.coords,
+                                        self.myTunnel.coords, UNIT_STATS[WORKER][MOVEMENT])
+                print("Path: " + str(path))
+                if len(path) == 1:
+                    print("Obstruction")
+                    possible_movements = listReachableAdjacent(currentState, path[0], 2)
+                    if len(possible_movements) != 0:
+                        random_number = random.randrange(0, len(possible_movements))
+                        return Move(MOVE_ANT, [path[0], possible_movements[random_number]], None)
+                #pdb.set_trace()
+                return Move(MOVE_ANT, path, None)
+                
+            #if the worker has no food, move toward food
+            if(not worker.carrying):
+                print(worker.UniqueID)
+                print("Toward food")
+                print("Food Coords: " + str(self.myFood.coords))
+                path = createPathToward(currentState, worker.coords,
+                                        self.myFood.coords, UNIT_STATS[WORKER][MOVEMENT])
+                print("Path: " + str(path))
+                if len(path) == 1:
+                    print("Obstruction")
+                    possible_movements = listReachableAdjacent(currentState, path[0], 2)
+                    if len(possible_movements) != 0:
+                        random_number = random.randrange(0, len(possible_movements))
+                        return Move(MOVE_ANT, [path[0], possible_movements[random_number]], None)
+                #pdb.set_trace()
+                return Move(MOVE_ANT, path, None)
         """
         Code above is copied
         """
