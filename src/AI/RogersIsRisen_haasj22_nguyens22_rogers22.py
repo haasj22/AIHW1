@@ -1,5 +1,7 @@
 import random
 import sys
+
+from SettingsPane import QuickStartFrame
 sys.path.append("..")  #so other modules can be found in parent dir
 from Player import *
 from Constants import *
@@ -8,7 +10,13 @@ from Ant import UNIT_STATS
 from Move import Move
 from GameState import *
 from AIPlayerUtils import *
+import operator
 
+class EnemyNode():
+
+    def __init__(self, coords, distance):
+        self.coords = coords
+        self.distance_from_drop_off = distance
 
 ##
 #AIPlayer
@@ -32,117 +40,7 @@ class AIPlayer(Player):
         super(AIPlayer,self).__init__(inputPlayerId, "RogersIsRisen")
         self.myFood = None
         self.myTunnel = None
-
-    ##
-    # getConstrLocation <!-- ITERATIVE -->
-    #
-    # Get coordinates to place a given Construction (either tunnel or grass that's not surrounding the anthill) at.
-    #
-    # Parameters:
-    # construction: the Construction to place.
-    # moves: list of squares already taken.
-    # currentState: the state of the game.
-    #
-    # Return: coordinates to place Construction at.
-    #
-    def getConstrLocation(self, construction, moves, currentState):
-        availableSpaces = []
-
-        # Tunnel on bottom row, grass on border.
-        for i in range(0, 10):
-            y = 0
-
-            if construction == GRASS:
-                y = 3
-
-            currentSpace = (i, y)
-
-            if currentState.board[i][y].constr is None and (i, y) not in moves:
-                availableSpaces.append(currentSpace)
-
-        # Can be anywhere legal.
-        # Help from https://www.w3schools.com/python/ref_random_randint.asp: randint's parameters are included.
-        index = random.randint(0, len(availableSpaces) - 1)
-        return availableSpaces[index]
-
-    ##
-    # getLocation <!-- ITERATIVE -->
-    #
-    # Gets the location of a desired Construction.
-    #
-    # Parameters:
-    # constr: the Construction to find.
-    # currentState: the state of the game.
-    #
-    # Return: a set of coordinates that correspond to desired construction's location.
-    # Help from John Haas: need to make sure Constr at given point is not None, use .type to determine constr.
-    #
-    def getLocation(self, constr, currentState):
-        for i in range(0, 10):
-            for j in range(6, 10):
-                if currentState.board[i][j].constr is not None \
-                        and getConstrAt(currentState, (i, j)).type == constr:
-                    constrPoint = (i, j)
-                    return constrPoint
-
-    ##
-    # getFoodLocation <!-- ITERATIVE -->
-    #
-    # Gets coordinates to place food at, with ideal locations being 2+ squares away from the enemy anthill and tunnel.
-    #
-    # Parameters:
-    # enemyAnthill: the location of the enemy anthill.
-    # enemyTunnel: the location of the enemy tunnel.
-    # moves: list of squares already taken.
-    # currentState: the state of the game.
-    #
-    # Return: coordinates to place food at.
-    # Help from https://www.w3schools.com/python/python_tuples_access.asp: tuples are like lists when being accessed.
-    #
-    def getFoodLocation(self, enemyAnthill, enemyTunnel, moves, currentState):
-        # Have a list of all available squares, with another for those 2+ squares away from enemy anthill/tunnel.
-        availableSquares = []
-        squaresTwoOrMoreAway = []
-
-        # Add available squares.
-        for i in range(0, 10):
-            for j in range(6, 10):
-                if currentState.board[i][j].constr is None and (i, j) not in moves:
-                    availableSquares.append((i, j))
-
-        # Get all spots 2+ squares away from enemy structures.
-        for point in availableSquares:
-            distanceFromHill = stepsToReach(currentState, enemyAnthill, point)
-            distanceFromTunnel = stepsToReach(currentState, enemyTunnel, point)
-
-            if distanceFromHill >= 2 and distanceFromTunnel >= 2:
-                squaresTwoOrMoreAway.append(point)
-
-        food = 0  # Need "dummy" index.
-        foodLocation = (0, 0)  # Need "dummy" coordinates.
-
-        # Choose spot 2+ squares away from enemy structures if able.
-        if len(squaresTwoOrMoreAway) >= 1:
-            food = random.randint(0, len(squaresTwoOrMoreAway) - 1)
-            foodLocation = squaresTwoOrMoreAway[food]
-
-            # Chosen square may not be empty.
-            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None \
-                    and (foodLocation[0], foodLocation[1]) in moves:
-                food = random.randint(0, len(squaresTwoOrMoreAway))
-                foodLocation = squaresTwoOrMoreAway[food]
-        else:
-            food = random.randint(0, len(availableSquares))
-            foodLocation = availableSquares[food]
-
-            # Chosen square may not be empty.
-            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None\
-                    and (foodLocation[0], foodLocation[1]) in moves:
-                food = random.randint(0, len(availableSquares))
-                foodLocation = availableSquares[food]
-
-        return foodLocation
-
+    
     ##
     #getPlacement
     #
@@ -156,49 +54,60 @@ class AIPlayer(Player):
     #   currentState - the state of the game at this point in time.
     #
     #Return: The coordinates of where the construction is to be placed
-    # Help from https://www.geeksforgeeks.org/python-call-function-from-another-function/: self.function() calls
-    # a function from the same class.
     ##
     def getPlacement(self, currentState):
-        # implemented by students to return their next move
-        if currentState.phase == SETUP_PHASE_1:  # stuff on my side
-            numGrass = 9
+        self.myFood = None
+        self.myTunnel = None
+        if currentState.phase == SETUP_PHASE_1:
+            return [(0,0), (5, 1), 
+                    (0,3), (1,2), (2,1), (3,0),
+                    (0,2), (1,1), (2,0),
+                    (0,1), (1,0) ]
+        elif currentState.phase == SETUP_PHASE_2:
+            enemy_anthill = getEnemyInv(None, currentState).getAnthill().coords
+            enemy_tunnel = getEnemyInv(None, currentState).getTunnels()[0].coords
+            print("Enemy Anthill: " + str(enemy_anthill))
+            print("Enemy Tunnel" + str(enemy_tunnel))
+
+            enemy_locations = []
+            for x in range(BOARD_LENGTH):
+                for y in range(BOARD_LENGTH - 4, BOARD_LENGTH):
+                    if currentState.board[x][y].constr == None:
+                        tunnel_length = stepsToReach(currentState, (x, y), enemy_tunnel)
+                        anthill_length = stepsToReach(currentState, (x, y), enemy_anthill)
+                        enemy_locations.append(EnemyNode((x,y), min(tunnel_length, anthill_length)))
+            enemy_locations = sorted(enemy_locations, key = operator.attrgetter('distance_from_drop_off'))
+            
+            for row in range(len(currentState.board)):
+                for col in range(len(currentState.board[row])):
+                    if currentState.board[row][col].constr == None:
+                        print("Empty", end="")
+                    else:
+                        print(currentState.board[row][col].constr.type, end="")
+                print("")
+    
+            for location in enemy_locations:
+                print(location.coords, end = " ")
+                print(location.distance_from_drop_off)
+
+            numToPlace = 2
             moves = []
-
-            # Place anthill and tunnel somewhere on "bottom" row.
-            anthillX = random.randint(0, 2)
-            anthillLocation = (anthillX, 0)
-            moves.append(anthillLocation)
-            moves.append(self.getConstrLocation(TUNNEL, moves, currentState))
-
-            # Place one layer of grass around anthill.
-            grassLayerLocation = listAdjacent(anthillLocation)
-
-            for point in grassLayerLocation:
-                if currentState.board[point[0]][point[1]].constr is None and (point[0], point[1]) not in moves:
-                    moves.append(point)
-                    numGrass -= 1
-
-            # Add remaining grass on outer edge.
-            while numGrass != 0:
-                moves.append(self.getConstrLocation(GRASS, moves, currentState))
-                numGrass -= 1
-
+            for i in range(0, numToPlace):
+                move = None
+                count = len(enemy_locations) - 1
+                while move == None:
+                    #Set the move if this space is empty
+                    print(count)
+                    if enemy_locations[count].coords not in moves:
+                        move = enemy_locations[count].coords
+                        #Just need to make the space non-empty. So I threw whatever I felt like in there.
+                        currentState.board[enemy_locations[count].coords[0]][enemy_locations[count].coords[1]].constr == True
+                    count -= 1
+                moves.append(move)
             return moves
-        elif currentState.phase == SETUP_PHASE_2:  # stuff on foe's side
-            foodMoves = []
-
-            # Get enemy anthill/tunnel locations.
-            enemyAnthill = self.getLocation(ANTHILL, currentState)
-            enemyTunnel = self.getLocation(TUNNEL, currentState)
-
-            # Place 2 foods.
-            for i in range(0, 2):
-                foodMoves.append(self.getFoodLocation(enemyAnthill, enemyTunnel, foodMoves, currentState))
-
-            return foodMoves
-        else:
-            return [(0, 0)]
+        else:            
+            return None  #should never happen
+    
 
     ##
     #getMove
@@ -267,10 +176,20 @@ class AIPlayer(Player):
         #don't do a build move if there are already 3+ ants
         numAnts = len(currentState.inventories[currentState.whoseTurn].ants)
 
+        #informatin I need to make choices
+        numSoldiers = len(getAntList(currentState, me, (SOLDIER,)))
+        numDrones = len(getAntList(currentState, me, (DRONE,)))
         numWorkers = len(getAntList(currentState, me, (WORKER,)))
         myAnthill = myInv.getAnthill()
-        if numWorkers < 3 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 0:
-            print(getAntAt(currentState, myAnthill))
+
+        print("Num Solders: " + str(numSoldiers))
+
+        if numSoldiers < 1 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 1:
+            return Move(BUILD, [myAnthill.coords], SOLDIER)
+        if numDrones < 1 and numSoldiers > 0 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 1:
+            return Move(BUILD, [myAnthill.coords], DRONE)
+        if numWorkers < 3 and numSoldiers > 0 and numDrones > 0 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 0 or numWorkers == 0 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 0:
+            #print(getAntAt(currentState, myAnthill))
             return Move(BUILD, [myAnthill.coords], WORKER)
         else:
             #print("Number of Workers: " + str(numWorkers))
@@ -324,15 +243,62 @@ class AIPlayer(Player):
         """
         Code above is copied
         """
+        
+        soldiers = getAntList(currentState, me, (SOLDIER,))
+        drones = getAntList(currentState, me, (DRONE,))
 
-        moves = listAllLegalMoves(currentState)
-        selectedMove = moves[random.randint(0,len(moves) - 1)]
+        if(len(workers) == 0 and myInv.foodCount == 0):
+            enemyQueen = getAntList(currentState, (me + 1) % 2, (QUEEN, ))
+            for soldier in soldiers:
+                if soldier.hasMoved:
+                    continue
+                else:
+                    path = createPathToward(currentState, soldier.coords,
+                                       enemyQueen.coords, UNIT_STATS[SOLDIER][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
+            for drone in drones:
+                if drone.hasMoved:
+                    continue
+                else:
+                    path = createPathToward(currentState, drone.coords,
+                                       enemyQueen.coords, UNIT_STATS[SOLDIER][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
 
+            pass
 
-        while (selectedMove.moveType == BUILD and numAnts >= 3):
-            selectedMove = moves[random.randint(0,len(moves) - 1)]
+        for soldier in soldiers:
+            if soldier.hasMoved:
+                continue
+            else:
+                path = createPathToward(currentState, soldier.coords,
+                                        (myAnthill.coords[0]+2, myAnthill.coords[1]), UNIT_STATS[SOLDIER][MOVEMENT])
+                return Move(MOVE_ANT, path, None)
+        
+        for drone in drones:
+            if drone.hasMoved:
+                continue
+            else:
+                enemyWorkerAnts = getAntList(currentState, (me + 1) % 2, (WORKER,))
+                enemyDroneAnts = getAntList(currentState, (me + 1) % 2, (DRONE,))
+                if len(enemyWorkerAnts) > 0:
+                    path = createPathToward(currentState, drone.coords,
+                                        enemyWorkerAnts[0].coords, UNIT_STATS[DRONE][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
+                elif len(enemyDroneAnts) > 0:
+                    path = createPathToward(currentState, drone.coords,
+                                        enemyDroneAnts[0].coords, UNIT_STATS[DRONE][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
+                else:
+                    if getConstrAt(currentState, (myAnthill.coords[0]+3, myAnthill.coords[1] + 1)) == None:
+                        path = createPathToward(currentState, drone.coords,
+                                        (myAnthill.coords[0]+3, myAnthill.coords[1] + 1), UNIT_STATS[DRONE][MOVEMENT])
+                        return Move(MOVE_ANT, path, None)
+                    else:
+                        return Move(MOVE_ANT, [drone.coords], None)
 
-        return selectedMove
+        return Move(END, None, None)
+    
+
 
     ##
     #getAttack
