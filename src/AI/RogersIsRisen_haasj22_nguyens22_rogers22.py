@@ -32,117 +32,7 @@ class AIPlayer(Player):
         super(AIPlayer,self).__init__(inputPlayerId, "RogersIsRisen")
         self.myFood = None
         self.myTunnel = None
-
-    ##
-    # getConstrLocation <!-- ITERATIVE -->
-    #
-    # Get coordinates to place a given Construction (either tunnel or grass that's not surrounding the anthill) at.
-    #
-    # Parameters:
-    # construction: the Construction to place.
-    # moves: list of squares already taken.
-    # currentState: the state of the game.
-    #
-    # Return: coordinates to place Construction at.
-    #
-    def getConstrLocation(self, construction, moves, currentState):
-        availableSpaces = []
-
-        # Tunnel on bottom row, grass on border.
-        for i in range(0, 10):
-            y = 0
-
-            if construction == GRASS:
-                y = 3
-
-            currentSpace = (i, y)
-
-            if currentState.board[i][y].constr is None and (i, y) not in moves:
-                availableSpaces.append(currentSpace)
-
-        # Can be anywhere legal.
-        # Help from https://www.w3schools.com/python/ref_random_randint.asp: randint's parameters are included.
-        index = random.randint(0, len(availableSpaces) - 1)
-        return availableSpaces[index]
-
-    ##
-    # getLocation <!-- ITERATIVE -->
-    #
-    # Gets the location of a desired Construction.
-    #
-    # Parameters:
-    # constr: the Construction to find.
-    # currentState: the state of the game.
-    #
-    # Return: a set of coordinates that correspond to desired construction's location.
-    # Help from John Haas: need to make sure Constr at given point is not None, use .type to determine constr.
-    #
-    def getLocation(self, constr, currentState):
-        for i in range(0, 10):
-            for j in range(6, 10):
-                if currentState.board[i][j].constr is not None \
-                        and getConstrAt(currentState, (i, j)).type == constr:
-                    constrPoint = (i, j)
-                    return constrPoint
-
-    ##
-    # getFoodLocation <!-- ITERATIVE -->
-    #
-    # Gets coordinates to place food at, with ideal locations being 2+ squares away from the enemy anthill and tunnel.
-    #
-    # Parameters:
-    # enemyAnthill: the location of the enemy anthill.
-    # enemyTunnel: the location of the enemy tunnel.
-    # moves: list of squares already taken.
-    # currentState: the state of the game.
-    #
-    # Return: coordinates to place food at.
-    # Help from https://www.w3schools.com/python/python_tuples_access.asp: tuples are like lists when being accessed.
-    #
-    def getFoodLocation(self, enemyAnthill, enemyTunnel, moves, currentState):
-        # Have a list of all available squares, with another for those 2+ squares away from enemy anthill/tunnel.
-        availableSquares = []
-        squaresTwoOrMoreAway = []
-
-        # Add available squares.
-        for i in range(0, 10):
-            for j in range(6, 10):
-                if currentState.board[i][j].constr is None and (i, j) not in moves:
-                    availableSquares.append((i, j))
-
-        # Get all spots 2+ squares away from enemy structures.
-        for point in availableSquares:
-            distanceFromHill = stepsToReach(currentState, enemyAnthill, point)
-            distanceFromTunnel = stepsToReach(currentState, enemyTunnel, point)
-
-            if distanceFromHill >= 2 and distanceFromTunnel >= 2:
-                squaresTwoOrMoreAway.append(point)
-
-        food = 0  # Need "dummy" index.
-        foodLocation = (0, 0)  # Need "dummy" coordinates.
-
-        # Choose spot 2+ squares away from enemy structures if able.
-        if len(squaresTwoOrMoreAway) >= 1:
-            food = random.randint(0, len(squaresTwoOrMoreAway) - 1)
-            foodLocation = squaresTwoOrMoreAway[food]
-
-            # Chosen square may not be empty.
-            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None \
-                    and (foodLocation[0], foodLocation[1]) in moves:
-                food = random.randint(0, len(squaresTwoOrMoreAway))
-                foodLocation = squaresTwoOrMoreAway[food]
-        else:
-            food = random.randint(0, len(availableSquares))
-            foodLocation = availableSquares[food]
-
-            # Chosen square may not be empty.
-            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None\
-                    and (foodLocation[0], foodLocation[1]) in moves:
-                food = random.randint(0, len(availableSquares))
-                foodLocation = availableSquares[food]
-
-        return foodLocation
-
+    
     ##
     #getPlacement
     #
@@ -156,50 +46,47 @@ class AIPlayer(Player):
     #   currentState - the state of the game at this point in time.
     #
     #Return: The coordinates of where the construction is to be placed
-    # Help from https://www.geeksforgeeks.org/python-call-function-from-another-function/: self.function() calls
-    # a function from the same class.
     ##
     def getPlacement(self, currentState):
-        # implemented by students to return their next move
-        if currentState.phase == SETUP_PHASE_1:  # stuff on my side
-            numGrass = 9
+        numToPlace = 0
+        #implemented by students to return their next move
+        if currentState.phase == SETUP_PHASE_1:    #stuff on my side
+            numToPlace = 11
             moves = []
-
-            # Place anthill and tunnel somewhere on "bottom" row.
-            anthillX = random.randint(0, 9)
-            anthillLocation = (anthillX, 0)
-            moves.append(anthillLocation)
-            moves.append(self.getConstrLocation(TUNNEL, moves, currentState))
-
-            # Place one layer of grass around anthill.
-            grassLayerLocation = listAdjacent(anthillLocation)
-
-            for point in grassLayerLocation:
-                if currentState.board[point[0]][point[1]].constr is None and (point[0], point[1]) not in moves:
-                    moves.append(point)
-                    numGrass -= 1
-
-            # Add remaining grass on outer edge.
-            while numGrass != 0:
-                moves.append(self.getConstrLocation(GRASS, moves, currentState))
-                numGrass -= 1
-
+            for i in range(0, numToPlace):
+                move = None
+                while move == None:
+                    #Choose any x location
+                    x = random.randint(0, 9)
+                    #Choose any y location on your side of the board
+                    y = random.randint(0, 3)
+                    #Set the move if this space is empty
+                    if currentState.board[x][y].constr == None and (x, y) not in moves:
+                        move = (x, y)
+                        #Just need to make the space non-empty. So I threw whatever I felt like in there.
+                        currentState.board[x][y].constr == True
+                moves.append(move)
             return moves
-        elif currentState.phase == SETUP_PHASE_2:  # stuff on foe's side
-            foodMoves = []
-
-            # Get enemy anthill/tunnel locations.
-            enemyAnthill = self.getLocation(ANTHILL, currentState)
-            enemyTunnel = self.getLocation(TUNNEL, currentState)
-
-            # Place 2 foods.
-            for i in range(0, 2):
-                foodMoves.append(self.getFoodLocation(enemyAnthill, enemyTunnel, foodMoves, currentState))
-
-            return foodMoves
+        elif currentState.phase == SETUP_PHASE_2:   #stuff on foe's side
+            numToPlace = 2
+            moves = []
+            for i in range(0, numToPlace):
+                move = None
+                while move == None:
+                    #Choose any x location
+                    x = random.randint(0, 9)
+                    #Choose any y location on enemy side of the board
+                    y = random.randint(6, 9)
+                    #Set the move if this space is empty
+                    if currentState.board[x][y].constr == None and (x, y) not in moves:
+                        move = (x, y)
+                        #Just need to make the space non-empty. So I threw whatever I felt like in there.
+                        currentState.board[x][y].constr == True
+                moves.append(move)
+            return moves
         else:
             return [(0, 0)]
-
+    
     ##
     #getMove
     #Description: Gets the next move from the Player.
@@ -328,12 +215,12 @@ class AIPlayer(Player):
         moves = listAllLegalMoves(currentState)
         selectedMove = moves[random.randint(0,len(moves) - 1)]
 
-
+        
         while (selectedMove.moveType == BUILD and numAnts >= 3):
             selectedMove = moves[random.randint(0,len(moves) - 1)]
-
+            
         return selectedMove
-
+    
     ##
     #getAttack
     #Description: Gets the attack to be made from the Player
