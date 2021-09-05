@@ -12,11 +12,38 @@ from GameState import *
 from AIPlayerUtils import *
 import operator
 
+#Class used for finding good locations for food
 class EnemyNode():
-
     def __init__(self, coords, distance):
         self.coords = coords
         self.distance_from_drop_off = distance
+
+##
+# getBestLocationsForFood
+# 
+# Method that finds the best location for the food by distance from tunnels and anthills
+#
+# Parameters:
+#    currentstate - current game state
+# 
+# Return: a list of locations where food can go sorted by distance to drop off location
+def getBestLocationsForFood(currentState):
+    #stores the location for the tunnel and anthill
+    enemyAnthill = getEnemyInv(None, currentState).getAnthill().coords
+    enemyTunnel = getEnemyInv(None, currentState).getTunnels()[0].coords
+
+    #gets the location from the anthill and tunnel 
+    #for each available place on the enemy side and stores the min distance in an array
+    enemyLocations = []
+    for x in range(BOARD_LENGTH):
+        for y in range(BOARD_LENGTH - 4, BOARD_LENGTH):
+            if currentState.board[x][y].constr == None:
+                tunnelLength = stepsToReach(currentState, (x, y), enemyTunnel)
+                anthillLength = stepsToReach(currentState, (x, y), enemyAnthill)
+                enemyLocations.append(EnemyNode((x,y), min(tunnelLength, anthillLength)))
+    #sorts the list and returns it
+    enemy_locations = sorted(enemyLocations, key = operator.attrgetter('distance_from_drop_off'))
+    return enemy_locations
 
 ##
 #AIPlayer
@@ -41,6 +68,7 @@ class AIPlayer(Player):
         self.myFood = None
         self.myTunnel = None
     
+
     ##
     #getPlacement
     #
@@ -58,50 +86,30 @@ class AIPlayer(Player):
     def getPlacement(self, currentState):
         self.myFood = None
         self.myTunnel = None
+
+        #Stolen from Booger AI
         if currentState.phase == SETUP_PHASE_1:
             return [(0,0), (5, 1), 
                     (0,3), (1,2), (2,1), (3,0),
                     (0,2), (1,1), (2,0),
                     (0,1), (1,0) ]
         elif currentState.phase == SETUP_PHASE_2:
-            enemy_anthill = getEnemyInv(None, currentState).getAnthill().coords
-            enemy_tunnel = getEnemyInv(None, currentState).getTunnels()[0].coords
-            print("Enemy Anthill: " + str(enemy_anthill))
-            print("Enemy Tunnel" + str(enemy_tunnel))
-
-            enemy_locations = []
-            for x in range(BOARD_LENGTH):
-                for y in range(BOARD_LENGTH - 4, BOARD_LENGTH):
-                    if currentState.board[x][y].constr == None:
-                        tunnel_length = stepsToReach(currentState, (x, y), enemy_tunnel)
-                        anthill_length = stepsToReach(currentState, (x, y), enemy_anthill)
-                        enemy_locations.append(EnemyNode((x,y), min(tunnel_length, anthill_length)))
-            enemy_locations = sorted(enemy_locations, key = operator.attrgetter('distance_from_drop_off'))
-            
-            for row in range(len(currentState.board)):
-                for col in range(len(currentState.board[row])):
-                    if currentState.board[row][col].constr == None:
-                        print("Empty", end="")
-                    else:
-                        print(currentState.board[row][col].constr.type, end="")
-                print("")
+            enemyLocationsSortedByDistanceFromSafety = getBestLocationsForFood(currentState)
     
-            for location in enemy_locations:
-                print(location.coords, end = " ")
-                print(location.distance_from_drop_off)
-
+            #places two foods, modified from Booger
             numToPlace = 2
             moves = []
             for i in range(0, numToPlace):
                 move = None
-                count = len(enemy_locations) - 1
+                #goes from largest location to smallest
+                count = len(enemyLocationsSortedByDistanceFromSafety) - 1
                 while move == None:
-                    #Set the move if this space is empty
-                    print(count)
-                    if enemy_locations[count].coords not in moves:
-                        move = enemy_locations[count].coords
-                        #Just need to make the space non-empty. So I threw whatever I felt like in there.
-                        currentState.board[enemy_locations[count].coords[0]][enemy_locations[count].coords[1]].constr == True
+                    #adds move if possible
+                    if enemyLocationsSortedByDistanceFromSafety[count].coords not in moves:
+                        move = enemyLocationsSortedByDistanceFromSafety[count].coords
+                        #Don't know if this is necessary, but it was in Booger's code
+                        currentState.board[enemyLocationsSortedByDistanceFromSafety[count].coords[0]]\
+                            [enemyLocationsSortedByDistanceFromSafety[count].coords[1]].constr == True
                     count -= 1
                 moves.append(move)
             return moves
