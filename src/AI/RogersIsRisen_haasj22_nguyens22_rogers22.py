@@ -36,18 +36,19 @@ class AIPlayer(Player):
     ##
     # getConstrLocation <!-- ITERATIVE -->
     #
-    # Get coordinates for a given struct (either tunnel or grass that's not surrounding the anthill).
+    # Get coordinates to place a given Construction (either tunnel or grass that's not surrounding the anthill) at.
     #
     # Parameters:
-    # construction: the Construction whose coordinates are desired.
+    # construction: the Construction to place.
     # moves: list of squares already taken.
-    # currentState; the state of the game.
+    # currentState: the state of the game.
     #
-    # Return: coordinates for desired Construction.
+    # Return: coordinates to place Construction at.
     #
     def getConstrLocation(self, construction, moves, currentState):
         availableSpaces = []
 
+        # Tunnel on bottom row, grass on border.
         for i in range(0, 10):
             y = 0
 
@@ -59,19 +60,22 @@ class AIPlayer(Player):
             if currentState.board[i][y].constr is None and (i, y) not in moves:
                 availableSpaces.append(currentSpace)
 
+        # Can be anywhere legal.
+        # Help from https://www.w3schools.com/python/ref_random_randint.asp: randint's parameters are included.
         index = random.randint(0, len(availableSpaces) - 1)
         return availableSpaces[index]
 
     ##
     # getLocation <!-- ITERATIVE -->
     #
-    # Places the food, with ideal locations being 2+ squares away from the enemy anthill and tunnel.
+    # Gets the location of a desired Construction.
     #
     # Parameters:
-    # constr: the construction to find.
-    # currentState; the state of the game.
+    # constr: the Construction to find.
+    # currentState: the state of the game.
     #
     # Return: a set of coordinates that correspond to desired construction's location.
+    # Help from John Haas: need to make sure Constr at given point is not None, use .type to determine constr.
     #
     def getLocation(self, constr, currentState):
         for i in range(0, 10):
@@ -84,7 +88,7 @@ class AIPlayer(Player):
     ##
     # getFoodLocation <!-- ITERATIVE -->
     #
-    # Places the food, with ideal locations being 2+ squares away from the enemy anthill and tunnel.
+    # Gets coordinates to place food at, with ideal locations being 2+ squares away from the enemy anthill and tunnel.
     #
     # Parameters:
     # enemyAnthill: the location of the enemy anthill.
@@ -92,7 +96,8 @@ class AIPlayer(Player):
     # moves: list of squares already taken.
     # currentState: the state of the game.
     #
-    # Return: coordinates for food.
+    # Return: coordinates to place food at.
+    # Help from https://www.w3schools.com/python/python_tuples_access.asp: tuples are like lists when being accessed.
     #
     def getFoodLocation(self, enemyAnthill, enemyTunnel, moves, currentState):
         # Have a list of all available squares, with another for those 2+ squares away from enemy anthill/tunnel.
@@ -113,22 +118,28 @@ class AIPlayer(Player):
             if distanceFromHill >= 2 and distanceFromTunnel >= 2:
                 squaresTwoOrMoreAway.append(point)
 
-        firstFood = 0  # Need "dummy" index.
-        firstFoodLocation = (0, 0)  # Need "dummy" coordinates.
+        food = 0  # Need "dummy" index.
+        foodLocation = (0, 0)  # Need "dummy" coordinates.
 
         # Choose spot 2+ squares away from enemy structures if able.
         if len(squaresTwoOrMoreAway) >= 1:
-            firstFood = random.randint(0, len(squaresTwoOrMoreAway) - 1)
-            firstFoodLocation = squaresTwoOrMoreAway[firstFood]
+            food = random.randint(0, len(squaresTwoOrMoreAway) - 1)
+            foodLocation = squaresTwoOrMoreAway[food]
 
-            while currentState.board[firstFoodLocation[0]][firstFoodLocation[1]].constr is not None:
-                firstFood = random.randint(0, len(squaresTwoOrMoreAway))
-                firstFoodLocation = squaresTwoOrMoreAway[firstFood]
+            # Chosen square may not be empty.
+            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None:
+                food = random.randint(0, len(squaresTwoOrMoreAway))
+                foodLocation = squaresTwoOrMoreAway[food]
         else:
-            firstFood = random.randint(0, len(availableSquares))
-            firstFoodLocation = availableSquares[firstFood]
+            food = random.randint(0, len(availableSquares))
+            foodLocation = availableSquares[food]
 
-        return firstFoodLocation
+            # Chosen square may not be empty.
+            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None:
+                food = random.randint(0, len(availableSquares))
+                foodLocation = availableSquares[food]
+
+        return foodLocation
 
     ##
     #getPlacement
@@ -143,6 +154,8 @@ class AIPlayer(Player):
     #   currentState - the state of the game at this point in time.
     #
     #Return: The coordinates of where the construction is to be placed
+    # Help from https://www.geeksforgeeks.org/python-call-function-from-another-function/: self.function() calls
+    # a function from the same class.
     ##
     def getPlacement(self, currentState):
         # implemented by students to return their next move
@@ -174,7 +187,6 @@ class AIPlayer(Player):
             foodMoves = []
 
             # Get enemy anthill/tunnel locations.
-            # Help from John Haas: need to make sure Constr at given point is not None, use .type to determine constr.
             enemyAnthill = self.getLocation(ANTHILL, currentState)
             enemyTunnel = self.getLocation(TUNNEL, currentState)
 
