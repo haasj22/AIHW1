@@ -1,5 +1,7 @@
 import random
 import sys
+
+from SettingsPane import QuickStartFrame
 sys.path.append("..")  #so other modules can be found in parent dir
 from Player import *
 from Constants import *
@@ -8,7 +10,13 @@ from Ant import UNIT_STATS
 from Move import Move
 from GameState import *
 from AIPlayerUtils import *
+import operator
 
+class EnemyNode():
+
+    def __init__(self, coords, distance):
+        self.coords = coords
+        self.distance_from_drop_off = distance
 
 ##
 #AIPlayer
@@ -48,44 +56,57 @@ class AIPlayer(Player):
     #Return: The coordinates of where the construction is to be placed
     ##
     def getPlacement(self, currentState):
-        numToPlace = 0
-        #implemented by students to return their next move
-        if currentState.phase == SETUP_PHASE_1:    #stuff on my side
-            numToPlace = 11
-            moves = []
-            for i in range(0, numToPlace):
-                move = None
-                while move == None:
-                    #Choose any x location
-                    x = random.randint(0, 9)
-                    #Choose any y location on your side of the board
-                    y = random.randint(0, 3)
-                    #Set the move if this space is empty
-                    if currentState.board[x][y].constr == None and (x, y) not in moves:
-                        move = (x, y)
-                        #Just need to make the space non-empty. So I threw whatever I felt like in there.
-                        currentState.board[x][y].constr == True
-                moves.append(move)
-            return moves
-        elif currentState.phase == SETUP_PHASE_2:   #stuff on foe's side
+        self.myFood = None
+        self.myTunnel = None
+        if currentState.phase == SETUP_PHASE_1:
+            return [(0,0), (5, 1), 
+                    (0,3), (1,2), (2,1), (3,0),
+                    (0,2), (1,1), (2,0),
+                    (0,1), (1,0) ]
+        elif currentState.phase == SETUP_PHASE_2:
+            enemy_anthill = getEnemyInv(None, currentState).getAnthill().coords
+            enemy_tunnel = getEnemyInv(None, currentState).getTunnels()[0].coords
+            print("Enemy Anthill: " + str(enemy_anthill))
+            print("Enemy Tunnel" + str(enemy_tunnel))
+
+            enemy_locations = []
+            for x in range(BOARD_LENGTH):
+                for y in range(BOARD_LENGTH - 4, BOARD_LENGTH):
+                    if currentState.board[x][y].constr == None:
+                        tunnel_length = stepsToReach(currentState, (x, y), enemy_tunnel)
+                        anthill_length = stepsToReach(currentState, (x, y), enemy_anthill)
+                        enemy_locations.append(EnemyNode((x,y), min(tunnel_length, anthill_length)))
+            enemy_locations = sorted(enemy_locations, key = operator.attrgetter('distance_from_drop_off'))
+            
+            for row in range(len(currentState.board)):
+                for col in range(len(currentState.board[row])):
+                    if currentState.board[row][col].constr == None:
+                        print("Empty", end="")
+                    else:
+                        print(currentState.board[row][col].constr.type, end="")
+                print("")
+    
+            for location in enemy_locations:
+                print(location.coords, end = " ")
+                print(location.distance_from_drop_off)
+
             numToPlace = 2
             moves = []
             for i in range(0, numToPlace):
                 move = None
+                count = len(enemy_locations) - 1
                 while move == None:
-                    #Choose any x location
-                    x = random.randint(0, 9)
-                    #Choose any y location on enemy side of the board
-                    y = random.randint(6, 9)
                     #Set the move if this space is empty
-                    if currentState.board[x][y].constr == None and (x, y) not in moves:
-                        move = (x, y)
+                    print(count)
+                    if enemy_locations[count].coords not in moves:
+                        move = enemy_locations[count].coords
                         #Just need to make the space non-empty. So I threw whatever I felt like in there.
-                        currentState.board[x][y].constr == True
+                        currentState.board[enemy_locations[count].coords[0]][enemy_locations[count].coords[1]].constr == True
+                    count -= 1
                 moves.append(move)
             return moves
-        else:
-            return [(0, 0)]
+        else:            
+            return None  #should never happen
     
     ##
     #getMove
@@ -154,10 +175,20 @@ class AIPlayer(Player):
         #don't do a build move if there are already 3+ ants
         numAnts = len(currentState.inventories[currentState.whoseTurn].ants)
 
+        #informatin I need to make choices
+        numSoldiers = len(getAntList(currentState, me, (SOLDIER,)))
+        numDrones = len(getAntList(currentState, me, (DRONE,)))
         numWorkers = len(getAntList(currentState, me, (WORKER,)))
         myAnthill = myInv.getAnthill()
-        if numWorkers < 3 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 0:
-            print(getAntAt(currentState, myAnthill))
+
+        print("Num Solders: " + str(numSoldiers))
+
+        if numSoldiers < 1 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 1:
+            return Move(BUILD, [myAnthill.coords], SOLDIER)
+        if numDrones < 1 and numSoldiers > 0 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 1:
+            return Move(BUILD, [myAnthill.coords], DRONE)
+        if numWorkers < 3 and numSoldiers > 0 and numDrones > 0 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 0 or numWorkers == 0 and getAntAt(currentState, myAnthill.coords) == None and myInv.foodCount > 0:
+            #print(getAntAt(currentState, myAnthill))
             return Move(BUILD, [myAnthill.coords], WORKER)
         else:
             #print("Number of Workers: " + str(numWorkers))
@@ -211,15 +242,68 @@ class AIPlayer(Player):
         """
         Code above is copied
         """
+        
+        soldiers = getAntList(currentState, me, (SOLDIER,))
+        drones = getAntList(currentState, me, (DRONE,))
 
+        if(len(workers) == 0 and myInv.foodCount == 0):
+            enemyQueen = getAntList(currentState, (me + 1) % 2, (QUEEN, ))
+            for soldier in soldiers:
+                if soldier.hasMoved:
+                    continue
+                else:
+                    path = createPathToward(currentState, soldier.coords,
+                                       enemyQueen.coords, UNIT_STATS[SOLDIER][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
+            for drone in drones:
+                if drone.hasMoved:
+                    continue
+                else:
+                    path = createPathToward(currentState, drone.coords,
+                                       enemyQueen.coords, UNIT_STATS[SOLDIER][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
+
+            pass
+
+        for soldier in soldiers:
+            if soldier.hasMoved:
+                continue
+            else:
+                path = createPathToward(currentState, soldier.coords,
+                                        (myAnthill.coords[0]+2, myAnthill.coords[1]), UNIT_STATS[SOLDIER][MOVEMENT])
+                return Move(MOVE_ANT, path, None)
+        
+        for drone in drones:
+            if drone.hasMoved:
+                continue
+            else:
+                enemyWorkerAnts = getAntList(currentState, (me + 1) % 2, (WORKER,))
+                enemyDroneAnts = getAntList(currentState, (me + 1) % 2, (DRONE,))
+                if len(enemyWorkerAnts) > 0:
+                    path = createPathToward(currentState, drone.coords,
+                                        enemyWorkerAnts[0].coords, UNIT_STATS[DRONE][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
+                elif len(enemyDroneAnts) > 0:
+                    path = createPathToward(currentState, drone.coords,
+                                        enemyDroneAnts[0].coords, UNIT_STATS[DRONE][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
+                else:
+                    if getConstrAt(currentState, (myAnthill.coords[0]+3, myAnthill.coords[1] + 1)) == None:
+                        path = createPathToward(currentState, drone.coords,
+                                        (myAnthill.coords[0]+3, myAnthill.coords[1] + 1), UNIT_STATS[DRONE][MOVEMENT])
+                        return Move(MOVE_ANT, path, None)
+                    else:
+                        return Move(MOVE_ANT, [drone.coords], None)
+
+        """
         moves = listAllLegalMoves(currentState)
         selectedMove = moves[random.randint(0,len(moves) - 1)]
 
         
         while (selectedMove.moveType == BUILD and numAnts >= 3):
             selectedMove = moves[random.randint(0,len(moves) - 1)]
-            
-        return selectedMove
+        """
+        return Move(END, None, None)
     
     ##
     #getAttack
