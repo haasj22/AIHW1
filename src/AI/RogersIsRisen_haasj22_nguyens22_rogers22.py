@@ -127,7 +127,8 @@ class AIPlayer(Player):
             foodLocation = squaresTwoOrMoreAway[food]
 
             # Chosen square may not be empty.
-            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None:
+            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None \
+                    and (foodLocation[0], foodLocation[1]) in moves:
                 food = random.randint(0, len(squaresTwoOrMoreAway))
                 foodLocation = squaresTwoOrMoreAway[food]
         else:
@@ -135,7 +136,8 @@ class AIPlayer(Player):
             foodLocation = availableSquares[food]
 
             # Chosen square may not be empty.
-            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None:
+            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None\
+                    and (foodLocation[0], foodLocation[1]) in moves:
                 food = random.randint(0, len(availableSquares))
                 foodLocation = availableSquares[food]
 
