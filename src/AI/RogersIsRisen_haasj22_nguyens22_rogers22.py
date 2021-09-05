@@ -199,7 +199,15 @@ class AIPlayer(Player):
     ##
     def getAttack(self, currentState, attackingAnt, enemyLocations):
         #Attack a random enemy.
-        return enemyLocations[random.randint(0, len(enemyLocations) - 1)]
+        
+        #cost2 = currentState.Location[ANTHILL]
+        shortestAttack = Location.getMoveCost(enemyLocations[0])
+        for x in range(0, len(enemyLocations) - 1):
+            if shortestAttack > Location.getMoveCost(enemyLocations[x]):
+                shortestAttack = enemyLocations[x]
+
+            
+        return shortestAttack
 
     ##
     #registerWin
