@@ -166,7 +166,7 @@ class AIPlayer(Player):
             moves = []
 
             # Place anthill and tunnel somewhere on "bottom" row.
-            anthillX = random.randint(0, 9)
+            anthillX = random.randint(0, 2)
             anthillLocation = (anthillX, 0)
             moves.append(anthillLocation)
             moves.append(self.getConstrLocation(TUNNEL, moves, currentState))
