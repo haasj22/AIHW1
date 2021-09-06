@@ -116,7 +116,7 @@ class AIPlayer(Player):
         for i in range(0, 10):
             currentSpace = (i, 3)
 
-            if currentState.board[i][y].constr is None and (i, y) not in moves:
+            if currentState.board[i][3].constr is None and (i, 3) not in moves:
                 availableSpaces.append(currentSpace)
 
         # Can be any of the viable squares.
