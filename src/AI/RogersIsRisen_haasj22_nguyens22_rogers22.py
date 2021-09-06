@@ -34,9 +34,9 @@ class AIPlayer(Player):
         self.myTunnel = None
 
     ##
-    #getConstrLocation <!-- ITERATIVE -->
+    #getGrassLocation <!-- ITERATIVE -->
     #
-    #  coordinates to place a given Construction (grass that's not surrounding the anthill) at.
+    #  coordinates to place Grass on the border.
     #
     #Parameters:
     #   construction: the Construction to place.
@@ -45,17 +45,11 @@ class AIPlayer(Player):
     #
     #Return: coordinates to place Construction at.
     #
-    def getConstrLocation(self, construction, moves, currentState):
+    def getGrassLocation(self, moves, currentState):
         availableSpaces = []
 
-        # Tunnel on bottom row, grass on border.
         for i in range(0, 10):
-            y = 0
-
-            if construction == GRASS:
-                y = 3
-
-            currentSpace = (i, y)
+            currentSpace = (i, 3)
 
             if currentState.board[i][y].constr is None and (i, y) not in moves:
                 availableSpaces.append(currentSpace)
@@ -150,7 +144,7 @@ class AIPlayer(Player):
 
             # Add remaining grass on outer edge.
             while numGrass != 0:
-                moves.append(self.getConstrLocation(GRASS, moves, currentState))
+                moves.append(self.getGrassLocation(moves, currentState))
                 numGrass -= 1
 
             return moves
