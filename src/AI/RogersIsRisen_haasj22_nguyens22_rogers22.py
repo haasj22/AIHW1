@@ -34,16 +34,16 @@ class AIPlayer(Player):
         self.myTunnel = None
 
     ##
-    # getConstrLocation <!-- ITERATIVE -->
+    #getConstrLocation <!-- ITERATIVE -->
     #
-    # Get coordinates to place a given Construction (either tunnel or grass that's not surrounding the anthill) at.
+    #  coordinates to place a given Construction (grass that's not surrounding the anthill) at.
     #
-    # Parameters:
-    # construction: the Construction to place.
-    # moves: list of squares already taken.
-    # currentState: the state of the game.
+    #Parameters:
+    #   construction: the Construction to place.
+    #   moves: list of squares already taken.
+    #   currentState: the state of the game.
     #
-    # Return: coordinates to place Construction at.
+    #Return: coordinates to place Construction at.
     #
     def getConstrLocation(self, construction, moves, currentState):
         availableSpaces = []
@@ -66,43 +66,25 @@ class AIPlayer(Player):
         return availableSpaces[index]
 
     ##
-    # getLocation <!-- ITERATIVE -->
+    #getFoodLocation
     #
-    # Gets the location of a desired Construction.
+    #Gets coordinates to place food at, with ideal locations being 2+ squares away from the enemy anthill and tunnel.
     #
-    # Parameters:
-    # constr: the Construction to find.
-    # currentState: the state of the game.
+    #Parameters:
+    #   enemyAnthill: the location of the enemy anthill.
+    #   enemyTunnel: the location of the enemy tunnel.
+    #   moves: list of squares already taken.
+    #   currentState: the state of the game.
     #
-    # Return: a set of coordinates that correspond to desired construction's location.
-    # Help from John Haas: need to make sure Constr at given point is not None, use .type to determine constr.
+    #Return: list of possible coordinates to place food at.
+    #Help from https://www.w3schools.com/python/python_tuples_access.asp: tuples are like lists when being accessed.
+    #Help from John Haas: choose squares based on minimum distances from the anthill and tunnel.
     #
-    def getLocation(self, constr, currentState):
-        for i in range(0, 10):
-            for j in range(6, 10):
-                if currentState.board[i][j].constr is not None \
-                        and getConstrAt(currentState, (i, j)).type == constr:
-                    constrPoint = (i, j)
-                    return constrPoint
-
-    ##
-    # getFoodLocation <!-- ITERATIVE -->
-    #
-    # Gets coordinates to place food at, with ideal locations being 2+ squares away from the enemy anthill and tunnel.
-    #
-    # Parameters:
-    # enemyAnthill: the location of the enemy anthill.
-    # enemyTunnel: the location of the enemy tunnel.
-    # moves: list of squares already taken.
-    # currentState: the state of the game.
-    #
-    # Return: coordinates to place food at.
-    # Help from https://www.w3schools.com/python/python_tuples_access.asp: tuples are like lists when being accessed.
-    #
-    def getFoodLocation(self, enemyAnthill, enemyTunnel, moves, currentState):
+    def getFoodLocations(self, enemyAnthill, enemyTunnel, moves, currentState):
         # Have a list of all available squares, with another for those 2+ squares away from enemy anthill/tunnel.
         availableSquares = []
-        squaresTwoOrMoreAway = []
+        foodLocations = []
+        dist = 0  # Arbitrary value to be updated as longer distances are found.
 
         # Add available squares.
         for i in range(0, 10):
@@ -110,38 +92,21 @@ class AIPlayer(Player):
                 if currentState.board[i][j].constr is None and (i, j) not in moves:
                     availableSquares.append((i, j))
 
-        # Get all spots 2+ squares away from enemy structures.
-        for point in availableSquares:
-            distanceFromHill = stepsToReach(currentState, enemyAnthill, point)
-            distanceFromTunnel = stepsToReach(currentState, enemyTunnel, point)
+        # Get all squares' min distances from enemy structures.
+        for i in availableSquares:
+            distanceFromHill = stepsToReach(currentState, enemyAnthill, i)
+            distanceFromTunnel = stepsToReach(currentState, enemyTunnel, i)
+            minDistance = min(distanceFromHill, distanceFromTunnel)
+            foodLocations.append(minDistance)
 
-            if distanceFromHill >= 2 and distanceFromTunnel >= 2:
-                squaresTwoOrMoreAway.append(point)
+        maxDistance = max(foodLocations)
 
-        food = 0  # Need "dummy" index.
-        foodLocation = (0, 0)  # Need "dummy" coordinates.
-
-        # Choose spot 2+ squares away from enemy structures if able.
-        if len(squaresTwoOrMoreAway) >= 1:
-            food = random.randint(0, len(squaresTwoOrMoreAway) - 1)
-            foodLocation = squaresTwoOrMoreAway[food]
-
-            # Chosen square may not be empty.
-            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None \
-                    and (foodLocation[0], foodLocation[1]) in moves:
-                food = random.randint(0, len(squaresTwoOrMoreAway))
-                foodLocation = squaresTwoOrMoreAway[food]
-        else:
-            food = random.randint(0, len(availableSquares))
-            foodLocation = availableSquares[food]
-
-            # Chosen square may not be empty.
-            while currentState.board[foodLocation[0]][foodLocation[1]].constr is not None\
-                    and (foodLocation[0], foodLocation[1]) in moves:
-                food = random.randint(0, len(availableSquares))
-                foodLocation = availableSquares[food]
-
-        return foodLocation
+        # Get point whose min distance from structures corresponds to current distance.
+        for i in availableSquares:
+            currentDistanceFromHill = stepsToReach(currentState, enemyAnthill, i)
+            currentDistanceFromTunnel = stepsToReach(currentState, enemyTunnel, i)
+            if min(currentDistanceFromHill, currentDistanceFromTunnel) == maxDistance:
+                return i
 
     ##
     #getPlacement
@@ -165,11 +130,15 @@ class AIPlayer(Player):
             numGrass = 9
             moves = []
 
-            # Place anthill and tunnel somewhere on "bottom" row.
+            # Place anthill on "bottom" row.
             anthillX = random.randint(0, 2)
             anthillLocation = (anthillX, 0)
             moves.append(anthillLocation)
-            moves.append(self.getConstrLocation(TUNNEL, moves, currentState))
+
+            # Place tunnel on second row from bottom away from the anthill.
+            tunnelX = random.randint(6, 8)
+            tunnelLocation = (tunnelX, 1)
+            moves.append(tunnelLocation)
 
             # Place one layer of grass around anthill.
             grassLayerLocation = listAdjacent(anthillLocation)
@@ -189,12 +158,13 @@ class AIPlayer(Player):
             foodMoves = []
 
             # Get enemy anthill/tunnel locations.
-            enemyAnthill = self.getLocation(ANTHILL, currentState)
-            enemyTunnel = self.getLocation(TUNNEL, currentState)
+            # Help from John Haas: getEnemyInv can help in getting enemy anthill/tunnel locations.
+            enemyAnthill = getEnemyInv(None, currentState).getAnthill().coords
+            enemyTunnel = getEnemyInv(None, currentState).getTunnels()[0].coords
 
             # Place 2 foods.
             for i in range(0, 2):
-                foodMoves.append(self.getFoodLocation(enemyAnthill, enemyTunnel, foodMoves, currentState))
+                foodMoves.append(self.getFoodLocations(enemyAnthill, enemyTunnel, foodMoves, currentState))
 
             return foodMoves
         else:
