@@ -99,6 +99,75 @@ class AIPlayer(Player):
     
 
     ##
+    #getGrassLocation
+    #
+    #Get coordinates where grass will be placed.
+    #
+    #Parameters:
+    #   moves: list of squares already taken.
+    #   currentState: the state of the game.
+    #
+    #Return: coordinates to place Construction at.
+    #
+    def getGrassLocation(self, moves, currentState):
+        availableSpaces = []
+
+        # Grass is placed on the border.
+        for i in range(0, 10):
+            currentSpace = (i, 3)
+
+            if currentState.board[i][y].constr is None and (i, y) not in moves:
+                availableSpaces.append(currentSpace)
+
+        # Can be any of the viable squares.
+        # Help from https://www.w3schools.com/python/ref_random_randint.asp: randint's parameters are included.
+        index = random.randint(0, len(availableSpaces) - 1)
+        return availableSpaces[index]
+
+    ##
+    #getFoodLocations
+    #
+    #Gets coordinates to place food at.
+    #
+    #Parameters:
+    #   enemyAnthill: the location of the enemy anthill.
+    #   enemyTunnel: the location of the enemy tunnel.
+    #   moves: list of squares already taken.
+    #   currentState: the state of the game.
+    #
+    #Return: list of possible coordinates to place food at.
+    #Help from https://www.w3schools.com/python/python_tuples_access.asp: tuples are like lists when being accessed.
+    #Help from John Haas: choose squares based on minimum distances from the anthill and tunnel.
+    #
+    def getFoodLocations(self, enemyAnthill, enemyTunnel, moves, currentState):
+        # Have a list of all available squares, with another for those 2+ squares away from enemy anthill/tunnel.
+        availableSquares = []
+        foodLocations = []
+        dist = 0  # Arbitrary value to be updated as longer distances are found.
+
+        # Add available squares.
+        for i in range(0, 10):
+            for j in range(6, 10):
+                if currentState.board[i][j].constr is None and (i, j) not in moves:
+                    availableSquares.append((i, j))
+
+        # Get all squares' min distances from enemy structures.
+        for i in availableSquares:
+            distanceFromHill = stepsToReach(currentState, enemyAnthill, i)
+            distanceFromTunnel = stepsToReach(currentState, enemyTunnel, i)
+            minDistance = min(distanceFromHill, distanceFromTunnel)
+            foodLocations.append(minDistance)
+
+        maxDistance = max(foodLocations)
+
+        # Get point whose min distance from structures corresponds to current distance.
+        for i in availableSquares:
+            currentDistanceFromHill = stepsToReach(currentState, enemyAnthill, i)
+            currentDistanceFromTunnel = stepsToReach(currentState, enemyTunnel, i)
+            if min(currentDistanceFromHill, currentDistanceFromTunnel) == maxDistance:
+                return i
+
+    ##
     #getPlacement
     #
     #Description: called during setup phase for each Construction that
@@ -111,39 +180,54 @@ class AIPlayer(Player):
     #   currentState - the state of the game at this point in time.
     #
     #Return: The coordinates of where the construction is to be placed
+    # Help from https://www.geeksforgeeks.org/python-call-function-from-another-function/: self.function() calls
+    # a function from the same class.
     ##
     def getPlacement(self, currentState):
-        self.myFood = None
-        self.myTunnel = None
-
-        #Stolen from Booger AI
-        if currentState.phase == SETUP_PHASE_1:
-            return [(0,0), (5, 1), 
-                    (0,3), (1,2), (2,1), (3,0),
-                    (0,2), (1,1), (2,0),
-                    (0,1), (1,0) ]
-        elif currentState.phase == SETUP_PHASE_2:
-            enemyLocationsSortedByDistanceFromSafety = getBestLocationsForFood(currentState)
-    
-            #places two foods, modified from Booger
-            numToPlace = 2
+        # implemented by students to return their next move
+        if currentState.phase == SETUP_PHASE_1:  # stuff on my side
+            numGrass = 9
             moves = []
-            for i in range(0, numToPlace):
-                move = None
-                #goes from largest location to smallest
-                count = len(enemyLocationsSortedByDistanceFromSafety) - 1
-                while move == None:
-                    #adds move if possible
-                    if enemyLocationsSortedByDistanceFromSafety[count].coords not in moves:
-                        move = enemyLocationsSortedByDistanceFromSafety[count].coords
-                        #Don't know if this is necessary, but it was in Booger's code
-                        currentState.board[enemyLocationsSortedByDistanceFromSafety[count].coords[0]]\
-                            [enemyLocationsSortedByDistanceFromSafety[count].coords[1]].constr == True
-                    count -= 1
-                moves.append(move)
+
+            # Place anthill on "bottom" row.
+            anthillX = random.randint(0, 2)
+            anthillLocation = (anthillX, 0)
+            moves.append(anthillLocation)
+
+            # Place tunnel on second row from bottom away from the anthill.
+            tunnelX = random.randint(6, 8)
+            tunnelLocation = (tunnelX, 1)
+            moves.append(tunnelLocation)
+
+            # Place one layer of grass around anthill.
+            grassLayerLocation = listAdjacent(anthillLocation)
+
+            for point in grassLayerLocation:
+                if currentState.board[point[0]][point[1]].constr is None and (point[0], point[1]) not in moves:
+                    moves.append(point)
+                    numGrass -= 1
+
+            # Add remaining grass on outer edge.
+            while numGrass != 0:
+                moves.append(self.getGrassLocation(moves, currentState))
+                numGrass -= 1
+
             return moves
-        else:            
-            return None  #should never happen
+        elif currentState.phase == SETUP_PHASE_2:  # stuff on foe's side
+            foodMoves = []
+
+            # Get enemy anthill/tunnel locations.
+            # Help from John Haas: getEnemyInv can help in getting enemy anthill/tunnel locations.
+            enemyAnthill = getEnemyInv(None, currentState).getAnthill().coords
+            enemyTunnel = getEnemyInv(None, currentState).getTunnels()[0].coords
+
+            # Place 2 foods.
+            for i in range(0, 2):
+                foodMoves.append(self.getFoodLocations(enemyAnthill, enemyTunnel, foodMoves, currentState))
+
+            return foodMoves
+        else:
+            return [(0, 0)]
     
     ##
     # moveQueen
