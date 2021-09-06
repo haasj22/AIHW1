@@ -34,12 +34,11 @@ class AIPlayer(Player):
         self.myTunnel = None
 
     ##
-    #getGrassLocation <!-- ITERATIVE -->
+    #getGrassLocation
     #
-    #  coordinates to place Grass on the border.
+    #Get coordinates where grass will be placed.
     #
     #Parameters:
-    #   construction: the Construction to place.
     #   moves: list of squares already taken.
     #   currentState: the state of the game.
     #
@@ -48,21 +47,22 @@ class AIPlayer(Player):
     def getGrassLocation(self, moves, currentState):
         availableSpaces = []
 
+        # Grass is placed on the border.
         for i in range(0, 10):
             currentSpace = (i, 3)
 
             if currentState.board[i][y].constr is None and (i, y) not in moves:
                 availableSpaces.append(currentSpace)
 
-        # Can be anywhere legal.
+        # Can be any of the viable squares.
         # Help from https://www.w3schools.com/python/ref_random_randint.asp: randint's parameters are included.
         index = random.randint(0, len(availableSpaces) - 1)
         return availableSpaces[index]
 
     ##
-    #getFoodLocation
+    #getFoodLocations
     #
-    #Gets coordinates to place food at, with ideal locations being 2+ squares away from the enemy anthill and tunnel.
+    #Gets coordinates to place food at.
     #
     #Parameters:
     #   enemyAnthill: the location of the enemy anthill.
