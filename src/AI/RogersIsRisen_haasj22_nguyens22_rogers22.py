@@ -400,12 +400,22 @@ class AIPlayer(Player):
     def moveSoldiers(self, currentState, myAnthill, soldiers):
         #tells the soldier if it exists to move two spaces to the left of the anthill
         for soldier in soldiers:
+            path = None
             if soldier.hasMoved:
                 continue
             else:
-                path = createPathToward(currentState, soldier.coords,
+                if getConstrAt(currentState, (myAnthill.coords[0]+2, myAnthill.coords[1])) == None or \
+                        getConstrAt(currentState, (myAnthill.coords[0]+2, myAnthill.coords[1])).type != FOOD:
+                    path = createPathToward(currentState, soldier.coords,
                                         (myAnthill.coords[0]+2, myAnthill.coords[1]), UNIT_STATS[SOLDIER][MOVEMENT])
-                return Move(MOVE_ANT, path, None)
+                elif getConstrAt(currentState, (myAnthill.coords[0]+3, myAnthill.coords[1])) == None or \
+                        getConstrAt(currentState, (myAnthill.coords[0]+3, myAnthill.coords[1])).type != FOOD:
+                    path = createPathToward(currentState, soldier.coords,
+                                        (myAnthill.coords[0]+3, myAnthill.coords[1]), UNIT_STATS[SOLDIER][MOVEMENT])
+                else:
+                    path = createPathToward(currentState, soldier.coords,
+                                        (myAnthill.coords[0]+4, myAnthill.coords[1]), UNIT_STATS[SOLDIER][MOVEMENT])
+            return Move(MOVE_ANT, path, None)
         #if no soldier return None
         return None
 
@@ -427,6 +437,7 @@ class AIPlayer(Player):
                 #gets the enemy ants
                 enemyWorkerAnts = getAntList(currentState, (playerID + 1) % 2, (WORKER,))
                 enemyDroneAnts = getAntList(currentState, (playerID + 1) % 2, (DRONE,))
+                enemyFood = getConstrList(currentState, 2, (FOOD,))
 
                 #attacks the enemy ants if they exist
                 if len(enemyWorkerAnts) > 0:
@@ -437,14 +448,11 @@ class AIPlayer(Player):
                     path = createPathToward(currentState, drone.coords,
                                         enemyDroneAnts[0].coords, UNIT_STATS[DRONE][MOVEMENT])
                     return Move(MOVE_ANT, path, None)
-                #else moves the ant next to the soldier for a pinsir attack
+                #else moves the ant next to the enemy food
                 else:
-                    if getConstrAt(currentState, (myAnthill.coords[0]+3, myAnthill.coords[1] + 1)) == None:
                         path = createPathToward(currentState, drone.coords,
-                                        (myAnthill.coords[0]+3, myAnthill.coords[1] + 1), UNIT_STATS[DRONE][MOVEMENT])
+                                        enemyFood[((playerID * 2)) % 4].coords, UNIT_STATS[DRONE][MOVEMENT])
                         return Move(MOVE_ANT, path, None)
-                    else:
-                        return Move(MOVE_ANT, [drone.coords], None)
         #if no drones returns None
         return None
 
