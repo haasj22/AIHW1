@@ -212,8 +212,10 @@ class AIPlayer(Player):
     #   currentState - the state of the game at this point in time.
     #
     #Return: The coordinates of where the construction is to be placed
-    # Help from https://www.geeksforgeeks.org/python-call-function-from-another-function/: self.function() calls
-    # a function from the same class.
+    #Help from https://www.geeksforgeeks.org/python-call-function-from-another-function/: self.function() calls
+    #a function from the same class.
+    #Help from https://stackoverflow.com/questions/3257919/what-is-the-difference-between-is-none-and-none: use is None
+    #instead of == None.
     ##
     def getPlacement(self, currentState):
         # implemented by students to return their next move
