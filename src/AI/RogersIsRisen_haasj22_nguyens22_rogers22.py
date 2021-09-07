@@ -533,6 +533,8 @@ class AIPlayer(Player):
     #    currentState - the current game state
     #    myInv - the inventory of the agent
     #    playerID - the id of the agent
+    # 
+    # Returns how to move the units
     def moveUnits(self, currentState, myInv, playerID):
         #moves the queen if its needed and possible to
         queensMove = self.moveQueen(currentState, myInv)
