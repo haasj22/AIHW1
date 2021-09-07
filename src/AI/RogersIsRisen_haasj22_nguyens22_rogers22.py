@@ -96,7 +96,38 @@ class AIPlayer(Player):
         super(AIPlayer,self).__init__(inputPlayerId, "RogersIsRisen")
         self.myFood = None
         self.myTunnel = None
-    
+
+    ##
+    # addSecondLayer
+    #
+    # Returns coordinates for a layer of grass on the border in front of the anthill/tunnel.
+    #
+    # Parameters:
+    #   anthillX: the anthill's x coordinate.
+    #   tunnelX: the tunnel's x coordinate.
+    #   currentState: the state of the game.
+    #
+    # Return: coordinates to place grass at.
+    #
+    def addSecondLayer(self, anthillX, tunnelX, currentState):
+        grassLocations = []
+        anthillXBorderPoint = (anthillX, 3)
+        tunnelXBorderPoint = (tunnelX, 3)
+
+        # Add grass on border where x coordinate is the same as the anthill/tunnel.
+        grassLocations.append(anthillXBorderPoint)
+        grassLocations.append(tunnelXBorderPoint)
+
+        # Add grass on adjacent squares that are also on the border.
+        for i in listAdjacent(anthillXBorderPoint):
+            if i[1] == 3 and getConstrAt(currentState, i) is None:
+                grassLocations.append(i)
+
+        for i in listAdjacent(tunnelXBorderPoint):
+            if i[1] == 3 and getConstrAt(currentState, i) is None:
+                grassLocations.append(i)
+
+        return grassLocations
 
     ##
     #getGrassLocation
@@ -209,6 +240,12 @@ class AIPlayer(Player):
                     numGrass -= 1
 
             # Add remaining grass on outer edge.
+            borderGrassLocations = self.addSecondLayer(anthillX, tunnelX, currentState)
+
+            for i in borderGrassLocations:
+                moves.append(i)
+                numGrass -= 1
+
             while numGrass != 0:
                 moves.append(self.getGrassLocation(moves, currentState))
                 numGrass -= 1
