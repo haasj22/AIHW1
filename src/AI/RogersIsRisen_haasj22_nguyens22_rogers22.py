@@ -525,6 +525,56 @@ class AIPlayer(Player):
         return None
 
     ##
+    # moveUnits
+    #
+    # tells the agents how to move Units
+    #
+    # Parameters:
+    #    currentState - the current game state
+    #    myInv - the inventory of the agent
+    #    playerID - the id of the agent
+    def moveUnits(self, currentState, myInv, playerID):
+        #moves the queen if its needed and possible to
+        queensMove = self.moveQueen(currentState, myInv)
+        if queensMove != None:
+            return queensMove
+
+        #information I need to make choices
+        numSoldiers = len(getAntList(currentState, playerID, (SOLDIER,)))
+        numDrones = len(getAntList(currentState, playerID, (DRONE,)))
+        numWorkers = len(getAntList(currentState, playerID, (WORKER,)))
+        myAnthill = myInv.getAnthill()
+
+        #builds an ant if necessary
+        buildMove = self.getBuildMoves(currentState, myInv, numSoldiers, numDrones, numWorkers, myAnthill)
+        if buildMove != None:
+            return buildMove
+        
+        #moves workers if possible
+        workers = getAntList(currentState, playerID, (WORKER,))
+        workersMove = self.moveWorkers(currentState, workers)
+        if workersMove != None:
+            return workersMove
+        
+        soldiers = getAntList(currentState, playerID, (SOLDIER,))
+        drones = getAntList(currentState, playerID, (DRONE,))
+
+        #performs a final desperate attack if necessary
+        desperateMove = self.getDesperationMoves(currentState, myInv, playerID, workers, soldiers, drones)
+        if desperateMove != None:
+            return desperateMove
+
+        #tells the agent how to move the soldier if it exists
+        soldierMove = self.moveSoldiers(currentState, playerID, myAnthill, soldiers)
+        if soldierMove != None:
+            return soldierMove
+        
+        #tells the agent how to move the drones if it exists
+        droneMove = self.moveDrones(currentState, playerID, myAnthill, drones)
+        if droneMove != None:
+            return droneMove
+
+    ##
     #getMove
     #Description: Gets the next move from the Player.
     #
@@ -545,44 +595,10 @@ class AIPlayer(Player):
         if (self.myFood == None or True):
             self.myFood = findMyFood(currentState, self.myTunnel)
 
-        #moves the queen if its needed and possible to
-        queensMove = self.moveQueen(currentState, myInv)
-        if queensMove != None:
-            return queensMove
-
-        #information I need to make choices
-        numSoldiers = len(getAntList(currentState, me, (SOLDIER,)))
-        numDrones = len(getAntList(currentState, me, (DRONE,)))
-        numWorkers = len(getAntList(currentState, me, (WORKER,)))
-        myAnthill = myInv.getAnthill()
-
-        #builds an ant if necessary
-        buildMove = self.getBuildMoves(currentState, myInv, numSoldiers, numDrones, numWorkers, myAnthill)
-        if buildMove != None:
-            return buildMove
-        
-        #moves workers if possible
-        workers = getAntList(currentState, me, (WORKER,))
-        workersMove = self.moveWorkers(currentState, workers)
-        if workersMove != None:
-            return workersMove
-        
-        soldiers = getAntList(currentState, me, (SOLDIER,))
-        drones = getAntList(currentState, me, (DRONE,))
-
-        #performs a final desperate attack if necessary
-        desperateMove = self.getDesperationMoves(currentState, myInv, me, workers, soldiers, drones)
-        if desperateMove != None:
-            return desperateMove
-
-        #tells the agent how to move the soldier if it exists
-        soldierMove = self.moveSoldiers(currentState, me, myAnthill, soldiers)
-        if soldierMove != None:
-            return soldierMove
-        
-        droneMove = self.moveDrones(currentState, me, myAnthill, drones)
-        if droneMove != None:
-            return droneMove
+        #moves the units if they need to be moved
+        unitsMove = self.moveUnits(currentState, myInv, me)
+        if unitsMove != None:
+            return unitsMove
 
         return Move(END, None, None)
     
