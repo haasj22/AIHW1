@@ -389,6 +389,26 @@ class AIPlayer(Player):
         return None
     
     ##
+    # searchMySideForEnemies
+    # 
+    # searches the agent's side for ants
+    #
+    # Parameters:
+    #    currentState - the current game state
+    #    playerID - the id of the agent
+    #    myAnthill - the construction of the agent's anthill
+    def searchMySideForEnemies(self, currentState, playerID, myAnthill): 
+        enemyAntList = []
+        #gets every enemy ant on the agents side
+        for x in range(0, BOARD_LENGTH):
+            for y in range(0, int(BOARD_LENGTH/2)):
+                if getAntAt(currentState, (x,y)) != None and getAntAt(currentState, (x,y)).player != playerID:
+                    enemyAntList.append(EnemyNode((x,y), stepsToReach(currentState, myAnthill.coords, (x,y))))
+        #sorts the ant list by distance from tunnel
+        enemyAntList.sort(key=operator.attrgetter("distance_from_drop_off"))
+        return enemyAntList
+    
+    ##
     # moveSoldiers
     #
     # tells the agent how to move the soldiers
@@ -397,12 +417,15 @@ class AIPlayer(Player):
     #   currentState - the current game state
     #   myAnthill - the construction representing the agent's anthill
     #   soldiers - the soldiers the agent has 
-    def moveSoldiers(self, currentState, myAnthill, soldiers):
+    def moveSoldiers(self, currentState, playerID, myAnthill, soldiers):
         #tells the soldier if it exists to move two spaces to the left of the anthill
         for soldier in soldiers:
             path = None
+            enemies = self.searchMySideForEnemies(currentState, playerID, myAnthill)
             if soldier.hasMoved:
                 continue
+            elif len(enemies) != 0:
+                path = createPathToward(currentState, soldier.coords, enemies[0].coords, UNIT_STATS[SOLDIER][MOVEMENT])
             else:
                 if getConstrAt(currentState, (myAnthill.coords[0]+2, myAnthill.coords[1])) == None or \
                         getConstrAt(currentState, (myAnthill.coords[0]+2, myAnthill.coords[1])).type != FOOD:
@@ -435,11 +458,16 @@ class AIPlayer(Player):
                 continue
             else:
                 #gets the enemy ants
+                enemyHunterAnts = getAntList(currentState, (playerID + 1) % 2, (R_SOLDIER,))
                 enemyWorkerAnts = getAntList(currentState, (playerID + 1) % 2, (WORKER,))
                 enemyDroneAnts = getAntList(currentState, (playerID + 1) % 2, (DRONE,))
                 enemyFood = getConstrList(currentState, 2, (FOOD,))
 
                 #attacks the enemy ants if they exist
+                if len(enemyHunterAnts) > 0: 
+                    path = createPathToward(currentState, drone.coords,
+                        enemyHunterAnts[0].coords, UNIT_STATS[DRONE][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
                 if len(enemyWorkerAnts) > 0:
                     path = createPathToward(currentState, drone.coords,
                                         enemyWorkerAnts[0].coords, UNIT_STATS[DRONE][MOVEMENT])
@@ -450,9 +478,9 @@ class AIPlayer(Player):
                     return Move(MOVE_ANT, path, None)
                 #else moves the ant next to the enemy food
                 else:
-                        path = createPathToward(currentState, drone.coords,
-                                        enemyFood[((playerID * 2)) % 4].coords, UNIT_STATS[DRONE][MOVEMENT])
-                        return Move(MOVE_ANT, path, None)
+                    path = createPathToward(currentState, drone.coords,
+                            enemyFood[((playerID * 2)) % 4].coords, UNIT_STATS[DRONE][MOVEMENT])
+                    return Move(MOVE_ANT, path, None)
         #if no drones returns None
         return None
 
@@ -508,7 +536,7 @@ class AIPlayer(Player):
             return desperateMove
 
         #tells the agent how to move the soldier if it exists
-        soldierMove = self.moveSoldiers(currentState, myAnthill, soldiers)
+        soldierMove = self.moveSoldiers(currentState, me, myAnthill, soldiers)
         if soldierMove != None:
             return soldierMove
         
