@@ -107,12 +107,12 @@ class AIPlayer(Player):
     #   moves: list of squares already taken.
     #   currentState: the state of the game.
     #
-    #Return: coordinates to place Construction at.
+    #Return: coordinates to place grass at.
     #
     def getGrassLocation(self, moves, currentState):
         availableSpaces = []
 
-        # Grass is placed on the border.
+        # Only the border is considered.
         for i in range(0, 10):
             currentSpace = (i, 3)
 
@@ -125,7 +125,7 @@ class AIPlayer(Player):
         return availableSpaces[index]
 
     ##
-    #getFoodLocations
+    #getFoodLocation
     #
     #Gets coordinates to place food at.
     #
@@ -139,11 +139,10 @@ class AIPlayer(Player):
     #Help from https://www.w3schools.com/python/python_tuples_access.asp: tuples are like lists when being accessed.
     #Help from John Haas: choose squares based on minimum distances from the anthill and tunnel.
     #
-    def getFoodLocations(self, enemyAnthill, enemyTunnel, moves, currentState):
-        # Have a list of all available squares, with another for those 2+ squares away from enemy anthill/tunnel.
+    def getFoodLocation(self, enemyAnthill, enemyTunnel, moves, currentState):
+        # Have a list of all available squares, with another for potential food locations.
         availableSquares = []
         foodLocations = []
-        dist = 0  # Arbitrary value to be updated as longer distances are found.
 
         # Add available squares.
         for i in range(0, 10):
@@ -158,6 +157,8 @@ class AIPlayer(Player):
             minDistance = min(distanceFromHill, distanceFromTunnel)
             foodLocations.append(minDistance)
 
+        # Help from https://www.geeksforgeeks.org/python-program-to-find-largest-number-in-a-list/.
+        # max() gets the entry with the highest value in a tuple.
         maxDistance = max(foodLocations)
 
         # Get point whose min distance from structures corresponds to current distance.
@@ -217,13 +218,13 @@ class AIPlayer(Player):
             foodMoves = []
 
             # Get enemy anthill/tunnel locations.
-            # Help from John Haas: getEnemyInv can help in getting enemy anthill/tunnel locations.
+            # Help from John Haas: getEnemyInv() can help in getting enemy anthill/tunnel locations.
             enemyAnthill = getEnemyInv(None, currentState).getAnthill().coords
             enemyTunnel = getEnemyInv(None, currentState).getTunnels()[0].coords
 
             # Place 2 foods.
             for i in range(0, 2):
-                foodMoves.append(self.getFoodLocations(enemyAnthill, enemyTunnel, foodMoves, currentState))
+                foodMoves.append(self.getFoodLocation(enemyAnthill, enemyTunnel, foodMoves, currentState))
 
             return foodMoves
         else:
