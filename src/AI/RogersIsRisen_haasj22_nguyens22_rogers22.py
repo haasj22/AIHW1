@@ -430,14 +430,14 @@ class AIPlayer(Player):
     
     ##
     # searchMySideForEnemies
-    # 
+    #
     # searches the agent's side for ants
     #
     # Parameters:
     #    currentState - the current game state
     #    playerID - the id of the agent
     #    myAnthill - the construction of the agent's anthill
-    def searchMySideForEnemies(self, currentState, playerID, myAnthill): 
+    def searchMySideForEnemies(self, currentState, playerID, myAnthill):
         enemyAntList = []
         #gets every enemy ant on the agents side
         for x in range(0, BOARD_LENGTH):
@@ -447,7 +447,7 @@ class AIPlayer(Player):
         #sorts the ant list by distance from tunnel
         enemyAntList.sort(key=operator.attrgetter("distance_from_drop_off"))
         return enemyAntList
-    
+
     ##
     # moveSoldiers
     #
@@ -456,7 +456,7 @@ class AIPlayer(Player):
     # Parameters:
     #   currentState - the current game state
     #   myAnthill - the construction representing the agent's anthill
-    #   soldiers - the soldiers the agent has 
+    #   soldiers - the soldiers the agent has
     def moveSoldiers(self, currentState, playerID, myAnthill, soldiers):
         #tells the soldier if it exists to move two spaces to the left of the anthill
         for soldier in soldiers:
@@ -504,7 +504,7 @@ class AIPlayer(Player):
                 enemyFood = getConstrList(currentState, 2, (FOOD,))
 
                 #attacks the enemy ants if they exist
-                if len(enemyHunterAnts) > 0: 
+                if len(enemyHunterAnts) > 0:
                     path = createPathToward(currentState, drone.coords,
                         enemyHunterAnts[0].coords, UNIT_STATS[DRONE][MOVEMENT])
                     return Move(MOVE_ANT, path, None)
