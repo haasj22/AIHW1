@@ -96,7 +96,38 @@ class AIPlayer(Player):
         super(AIPlayer,self).__init__(inputPlayerId, "RogersIsRisen")
         self.myFood = None
         self.myTunnel = None
-    
+
+    ##
+    # addSecondLayer
+    #
+    # Returns coordinates for a layer of grass on the border in front of the anthill/tunnel.
+    #
+    # Parameters:
+    #   anthillX: the anthill's x coordinate.
+    #   tunnelX: the tunnel's x coordinate.
+    #   currentState: the state of the game.
+    #
+    # Return: coordinates to place grass at.
+    #
+    def addSecondLayer(self, anthillX, tunnelX, currentState):
+        grassLocations = []
+        anthillXBorderPoint = (anthillX, 3)
+        tunnelXBorderPoint = (tunnelX, 3)
+
+        # Add grass on border where x coordinate is the same as the anthill/tunnel.
+        grassLocations.append(anthillXBorderPoint)
+        grassLocations.append(tunnelXBorderPoint)
+
+        # Add grass on adjacent squares that are also on the border.
+        for i in listAdjacent(anthillXBorderPoint):
+            if i[1] == 3 and getConstrAt(currentState, i) is None:
+                grassLocations.append(i)
+
+        for i in listAdjacent(tunnelXBorderPoint):
+            if i[1] == 3 and getConstrAt(currentState, i) is None:
+                grassLocations.append(i)
+
+        return grassLocations
 
     ##
     #getGrassLocation
@@ -107,12 +138,12 @@ class AIPlayer(Player):
     #   moves: list of squares already taken.
     #   currentState: the state of the game.
     #
-    #Return: coordinates to place Construction at.
+    #Return: coordinates to place grass at.
     #
     def getGrassLocation(self, moves, currentState):
         availableSpaces = []
 
-        # Grass is placed on the border.
+        # Only the border is considered.
         for i in range(0, 10):
             currentSpace = (i, 3)
 
@@ -125,7 +156,7 @@ class AIPlayer(Player):
         return availableSpaces[index]
 
     ##
-    #getFoodLocations
+    #getFoodLocation
     #
     #Gets coordinates to place food at.
     #
@@ -139,11 +170,10 @@ class AIPlayer(Player):
     #Help from https://www.w3schools.com/python/python_tuples_access.asp: tuples are like lists when being accessed.
     #Help from John Haas: choose squares based on minimum distances from the anthill and tunnel.
     #
-    def getFoodLocations(self, enemyAnthill, enemyTunnel, moves, currentState):
-        # Have a list of all available squares, with another for those 2+ squares away from enemy anthill/tunnel.
+    def getFoodLocation(self, enemyAnthill, enemyTunnel, moves, currentState):
+        # Have a list of all available squares, with another for potential food locations.
         availableSquares = []
         foodLocations = []
-        dist = 0  # Arbitrary value to be updated as longer distances are found.
 
         # Add available squares.
         for i in range(0, 10):
@@ -158,6 +188,8 @@ class AIPlayer(Player):
             minDistance = min(distanceFromHill, distanceFromTunnel)
             foodLocations.append(minDistance)
 
+        # Help from https://www.geeksforgeeks.org/python-program-to-find-largest-number-in-a-list/.
+        # max() gets the entry with the highest value in a tuple.
         maxDistance = max(foodLocations)
 
         # Get point whose min distance from structures corresponds to current distance.
@@ -180,8 +212,10 @@ class AIPlayer(Player):
     #   currentState - the state of the game at this point in time.
     #
     #Return: The coordinates of where the construction is to be placed
-    # Help from https://www.geeksforgeeks.org/python-call-function-from-another-function/: self.function() calls
-    # a function from the same class.
+    #Help from https://www.geeksforgeeks.org/python-call-function-from-another-function/: self.function() calls
+    #a function from the same class.
+    #Help from https://stackoverflow.com/questions/3257919/what-is-the-difference-between-is-none-and-none: use is None
+    #instead of == None.
     ##
     def getPlacement(self, currentState):
         # implemented by students to return their next move
@@ -208,6 +242,12 @@ class AIPlayer(Player):
                     numGrass -= 1
 
             # Add remaining grass on outer edge.
+            borderGrassLocations = self.addSecondLayer(anthillX, tunnelX, currentState)
+
+            for i in borderGrassLocations:
+                moves.append(i)
+                numGrass -= 1
+
             while numGrass != 0:
                 moves.append(self.getGrassLocation(moves, currentState))
                 numGrass -= 1
@@ -217,13 +257,13 @@ class AIPlayer(Player):
             foodMoves = []
 
             # Get enemy anthill/tunnel locations.
-            # Help from John Haas: getEnemyInv can help in getting enemy anthill/tunnel locations.
+            # Help from John Haas: getEnemyInv() can help in getting enemy anthill/tunnel locations.
             enemyAnthill = getEnemyInv(None, currentState).getAnthill().coords
             enemyTunnel = getEnemyInv(None, currentState).getTunnels()[0].coords
 
             # Place 2 foods.
             for i in range(0, 2):
-                foodMoves.append(self.getFoodLocations(enemyAnthill, enemyTunnel, foodMoves, currentState))
+                foodMoves.append(self.getFoodLocation(enemyAnthill, enemyTunnel, foodMoves, currentState))
 
             return foodMoves
         else:
